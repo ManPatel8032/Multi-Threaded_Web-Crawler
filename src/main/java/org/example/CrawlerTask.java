@@ -21,12 +21,7 @@ public class CrawlerTask implements Runnable{
         this.currentDepth = currentDepth;
         this.phaser = phaser;
     }
-
-    public CrawlerTask() {
-
-    }
-
-
+    
     //When we create thread, and we want to perform task using that thread then we use run method
     @Override
     public void run() {
