@@ -20,7 +20,7 @@ public class URLStore {
         return urlQueue.poll();
     }
 
-    public isQueueEmpty(){
+    public boolean isQueueEmpty(){
         return urlQueue.isEmpty();
     }
 }
