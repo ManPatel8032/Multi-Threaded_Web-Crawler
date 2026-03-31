@@ -42,6 +42,10 @@ public class WebCrawler {
         URLStore urlStore = new URLStore();
         URLFetcher urlFetcher = new URLFetcher();
         BrokenLinkStore brokenLinkStore = new BrokenLinkStore();
+
+        // Parse robots.txt before crawling to respect site rules
+        RobotsTxtParser robotsTxtParser = new RobotsTxtParser(url);
+
         phaser = new Phaser(1);
 
         executorService = Executors.newFixedThreadPool(MAX_THREADS);
@@ -49,7 +53,7 @@ public class WebCrawler {
         urlStore.addUrl(url);
         long start = System.currentTimeMillis();
 
-        submitTask(urlStore, urlFetcher, brokenLinkStore, 0, MAX_DEPTH);
+        submitTask(urlStore, urlFetcher, brokenLinkStore, robotsTxtParser, 0, MAX_DEPTH);
         phaser.awaitAdvance(phaser.getPhase());
 
         executorService.shutdown();
@@ -66,8 +70,8 @@ public class WebCrawler {
         brokenLinkStore.printReport();
     }
 
-    public static void submitTask(URLStore urlStore, URLFetcher urlFetcher, BrokenLinkStore brokenLinkStore, int currentDepth, int maxDepth) {
-        executorService.submit(new CrawlerTask(urlStore, urlFetcher, brokenLinkStore, maxDepth, currentDepth, phaser));
+    public static void submitTask(URLStore urlStore, URLFetcher urlFetcher, BrokenLinkStore brokenLinkStore, RobotsTxtParser robotsTxtParser, int currentDepth, int maxDepth) {
+        executorService.submit(new CrawlerTask(urlStore, urlFetcher, brokenLinkStore, robotsTxtParser, maxDepth, currentDepth, phaser));
     }
 
 }

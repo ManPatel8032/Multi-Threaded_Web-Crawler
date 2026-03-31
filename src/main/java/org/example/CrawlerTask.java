@@ -8,6 +8,7 @@ public class CrawlerTask implements Runnable{
     private final URLStore urlStore;
     private final URLFetcher urlFetcher;
     private final BrokenLinkStore brokenLinkStore;
+    private final RobotsTxtParser robotsTxtParser;
     private final int maxDepth;
     private final int currentDepth;
     private final Phaser phaser;
@@ -26,10 +27,11 @@ public class CrawlerTask implements Runnable{
     // Phaser keeps giving information how much task is done by thread and how much task is left and how many threads are working
     // Call resistor function, phaser knows how many threads are working
 
-    public CrawlerTask(URLStore urlStore, URLFetcher urlFetcher, BrokenLinkStore brokenLinkStore, int maxDepth, int currentDepth, Phaser phaser) {
+    public CrawlerTask(URLStore urlStore, URLFetcher urlFetcher, BrokenLinkStore brokenLinkStore, RobotsTxtParser robotsTxtParser, int maxDepth, int currentDepth, Phaser phaser) {
         this.urlStore = urlStore;
         this.urlFetcher = urlFetcher;
         this.brokenLinkStore = brokenLinkStore;
+        this.robotsTxtParser = robotsTxtParser;
         this.maxDepth = maxDepth;
         this.currentDepth = currentDepth;
         this.phaser = phaser;
@@ -57,6 +59,12 @@ public class CrawlerTask implements Runnable{
             // Skip file download URLs — Jsoup can't parse binary files
             if (isFileUrl(url)) return;
 
+            // Skip URLs disallowed by robots.txt
+            if (!robotsTxtParser.isAllowed(url)) {
+                System.out.println("  ↳ Skipped (blocked by robots.txt)");
+                return;
+            }
+
             // Fetch the page and check its status (even at max depth)
             URLFetcher.FetchResult result = urlFetcher.fetchLinks(url);
             urlStore.incrementProcessed();
@@ -73,8 +81,8 @@ public class CrawlerTask implements Runnable{
             Set<String> links = result.getLinks();
             for(String link : links){
                 try {
-                    // Skip file download links
-                    if (isFileUrl(link)) continue;
+                    // Skip file download links and robots.txt disallowed links
+                    if (isFileUrl(link) || !robotsTxtParser.isAllowed(link)) continue;
 
                     String linkHost = new java.net.URL(link).getHost();
                     boolean isInternal = linkHost.equals(WebCrawler.getBaseDomain());
@@ -84,7 +92,7 @@ public class CrawlerTask implements Runnable{
                         // which already returns the status code, so no extra request needed
                         phaser.register();
                         try {
-                            WebCrawler.submitTask(urlStore, urlFetcher, brokenLinkStore, currentDepth + 1, maxDepth);
+                            WebCrawler.submitTask(urlStore, urlFetcher, brokenLinkStore, robotsTxtParser, currentDepth + 1, maxDepth);
                         } catch (Exception e) {
                             phaser.arriveAndDeregister();
                         }
