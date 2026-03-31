@@ -66,8 +66,6 @@ public class WebCrawler {
         brokenLinkStore.printReport();
     }
 
-    public static void submitTask(){}
-
     public static void submitTask(URLStore urlStore, URLFetcher urlFetcher, BrokenLinkStore brokenLinkStore, int currentDepth, int maxDepth) {
         executorService.submit(new CrawlerTask(urlStore, urlFetcher, brokenLinkStore, maxDepth, currentDepth, phaser));
     }

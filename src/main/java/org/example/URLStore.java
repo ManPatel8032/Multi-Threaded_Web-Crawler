@@ -1,15 +1,17 @@
 package org.example;
 
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class URLStore {
-    private final ConcurrentHashMap<String, Boolean> visistedUrl= new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Boolean> visitedUrl = new ConcurrentHashMap<>();
     private final BlockingQueue<String> urlQueue = new LinkedBlockingQueue<>(1000);
 
     public boolean addUrl(String url) {
-        if (visistedUrl.putIfAbsent(url, true) == null) {
+        if (visitedUrl.putIfAbsent(url, true) == null) {
             urlQueue.offer(url);
             return true;
         }
@@ -24,7 +26,7 @@ public class URLStore {
         return urlQueue.isEmpty();
     }
 
-    private final java.util.concurrent.atomic.AtomicInteger totalProcessed = new java.util.concurrent.atomic.AtomicInteger();
+    private final AtomicInteger totalProcessed = new AtomicInteger();
 
     public void incrementProcessed() {
         totalProcessed.incrementAndGet();
@@ -34,7 +36,7 @@ public class URLStore {
         return totalProcessed.get();
     }
 
-    public java.util.Set<String> getAllVisitedUrls() {
-        return visistedUrl.keySet();
+    public Set<String> getAllVisitedUrls() {
+        return visitedUrl.keySet();
     }
 }
