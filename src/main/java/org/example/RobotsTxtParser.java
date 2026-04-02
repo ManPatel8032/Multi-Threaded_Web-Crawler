@@ -1,7 +1,6 @@
 package org.example;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
+import org.jsoup.Jsoup;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,41 +8,46 @@ import java.util.List;
 public class RobotsTxtParser {
     private final List<String> disallowedPaths = new ArrayList<>();
 
-    // Fetches and parses robots.txt from the given domain
     public RobotsTxtParser(String baseUrl) {
         try {
             URL url = new URL(baseUrl);
             String robotsUrl = url.getProtocol() + "://" + url.getHost() + "/robots.txt";
 
-            BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(new URL(robotsUrl).openStream())
-            );
+            String robotsText = Jsoup.connect(robotsUrl)
+                    .userAgent("MyCrawlerBot/1.0")
+                    .ignoreContentType(true)
+                    .timeout(5000)
+                    .execute()
+                    .body();
 
             boolean relevantSection = false;
-            String line;
+            boolean inUserAgentBlock = true; // tracks if we're still reading User-agent lines
 
-            while ((line = reader.readLine()) != null) {
+            for (String line : robotsText.split("\n")) {
                 line = line.trim();
 
-                // Skip comments and empty lines
                 if (line.isEmpty() || line.startsWith("#")) continue;
 
-                // Check if this section applies to us (User-agent: *)
                 if (line.toLowerCase().startsWith("user-agent:")) {
+                    if (!inUserAgentBlock) {
+                        relevantSection = false;
+                        inUserAgentBlock = true;
+                    }
                     String agent = line.substring(11).trim();
-                    relevantSection = agent.equals("*");
-                }
+                    if (agent.equals("*")) {
+                        relevantSection = true;
+                    }
+                } else {
+                    inUserAgentBlock = false;
 
-                // Parse Disallow rules for our section
-                if (relevantSection && line.toLowerCase().startsWith("disallow:")) {
-                    String path = line.substring(9).trim();
-                    if (!path.isEmpty()) {
-                        disallowedPaths.add(path);
+                    if (relevantSection && line.toLowerCase().startsWith("disallow:")) {
+                        String path = line.substring(9).trim();
+                        if (!path.isEmpty()) {
+                            disallowedPaths.add(path);
+                        }
                     }
                 }
             }
-
-            reader.close();
 
             if (!disallowedPaths.isEmpty()) {
                 System.out.println("Loaded robots.txt — " + disallowedPaths.size() + " disallowed path(s):");
@@ -59,7 +63,6 @@ public class RobotsTxtParser {
         }
     }
 
-    // Checks if a URL is allowed to be crawled
     public boolean isAllowed(String url) {
         try {
             String path = new URL(url).getPath();
@@ -74,3 +77,4 @@ public class RobotsTxtParser {
         return true;
     }
 }
+

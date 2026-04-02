@@ -11,7 +11,6 @@ import java.util.Set;
 
 public class URLFetcher {
 
-    // Result class to hold both links and the HTTP status code of a fetched page
     public static class FetchResult {
         private final Set<String> links;
         private final int statusCode;

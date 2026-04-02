@@ -7,10 +7,7 @@ import java.util.concurrent.Phaser;
 
 public class WebCrawler {
     private static Phaser phaser;
-    // static is used, why?
     private static ExecutorService executorService;
-    // Executor Service manages how many threads should be created
-
     private static String baseDomain;
 
     public static String getBaseDomain() {
@@ -19,7 +16,8 @@ public class WebCrawler {
 
     private static String extractDomain(String url) {
         try {
-            return new java.net.URL(url).getHost();
+            String host = new java.net.URL(url).getHost();
+            return host.startsWith("www.") ? host.substring(4) : host;
         } catch (Exception e) {
             return "";
         }
@@ -28,10 +26,11 @@ public class WebCrawler {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
 
-        System.out.println("Enter your URL : ");
+        System.out.println("Enter your URL (e.g., https://example.com) : ");
         String url = sc.nextLine();
 
         baseDomain = extractDomain(url);
+        System.out.println("Targeting internal domain: " + baseDomain);
 
         System.out.println("Enter the depth of the crawler : ");
         final int MAX_DEPTH = sc.nextInt();
@@ -42,36 +41,30 @@ public class WebCrawler {
         URLStore urlStore = new URLStore();
         URLFetcher urlFetcher = new URLFetcher();
         BrokenLinkStore brokenLinkStore = new BrokenLinkStore();
-
-        // Parse robots.txt before crawling to respect site rules
         RobotsTxtParser robotsTxtParser = new RobotsTxtParser(url);
 
         phaser = new Phaser(1);
-
         executorService = Executors.newFixedThreadPool(MAX_THREADS);
 
         urlStore.addUrl(url);
         long start = System.currentTimeMillis();
 
         submitTask(urlStore, urlFetcher, brokenLinkStore, robotsTxtParser, 0, MAX_DEPTH);
+
         phaser.awaitAdvance(phaser.getPhase());
-
         executorService.shutdown();
+
+        System.out.println("\n========================================");
         System.out.println("Total execution time : " + (System.currentTimeMillis() - start) + " ms");
+        System.out.println("Total URLs processed : " + urlStore.getTotalProcessed());
+        System.out.println("========================================");
 
-        System.out.println("Total URLs processed: " + urlStore.getTotalProcessed());
-
-        System.out.println("\nVisited URLs:");
-        for (String visited : urlStore.getAllVisitedUrls()) {
-            System.out.println(visited);
-        }
-
-        // Print the Broken Link Report
         brokenLinkStore.printReport();
+
+        ReportGenerator.generateReports(urlStore, brokenLinkStore);
     }
 
     public static void submitTask(URLStore urlStore, URLFetcher urlFetcher, BrokenLinkStore brokenLinkStore, RobotsTxtParser robotsTxtParser, int currentDepth, int maxDepth) {
         executorService.submit(new CrawlerTask(urlStore, urlFetcher, brokenLinkStore, robotsTxtParser, maxDepth, currentDepth, phaser));
     }
-
 }
